@@ -21,12 +21,19 @@ module Sequel
         when 'SQL Server'
           require 'sequel_core/adapters/shared/mssql'
           extend Sequel::MSSQL::DatabaseMethods
+        when 'MS Access'
+          require 'sequel_core/adapters/shared/ms_access'
+          extend Sequel::MSAccess::DatabaseMethods
         end
       end
 
       def connect(server)
         opts = server_opts(server)
-        s = "driver=#{opts[:driver]};server=#{opts[:host]};database=#{opts[:database]}#{";uid=#{opts[:user]};pwd=#{opts[:password]}" if opts[:user]}"
+        if opts[:driver] == 'MS Access'
+          s = "Provider=Microsoft.Jet.OLEDB.4.0;Data Source=#{opts[:database]};"
+        else
+          s = "driver=#{opts[:driver]};server=#{opts[:host]};database=#{opts[:database]}#{";uid=#{opts[:user]};pwd=#{opts[:password]}" if opts[:user]}"
+        end
         handle = WIN32OLE.new('ADODB.Connection')
         handle.Open(s)
         handle
