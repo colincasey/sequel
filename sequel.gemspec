@@ -1,7 +1,7 @@
 Gem::Specification.new do |s|
   s.name = 'sequel'
   s.rubyforge_project = 'sequel'
-  s.version = '2.10.0'
+  s.version = '2.10.1'
   s.platform = Gem::Platform::RUBY
   s.has_rdoc = true
   s.extra_rdoc_files = ["README.rdoc", "CHANGELOG", "COPYING",
