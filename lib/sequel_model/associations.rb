@@ -51,6 +51,15 @@
 #   one_to_many :attributes
 #   has_many :attributes
 module Sequel::Model::Associations
+  # This module contains methods added to all association datasets
+  module DatasetMethods
+    # The model object that created the association dataset
+    attr_accessor :model_object
+
+    # The association reflection related to the association dataset
+    attr_accessor :association_reflection
+  end
+
   # Array of all association reflections for this model class
   def all_association_reflections
     association_reflections.values
@@ -399,21 +408,7 @@ module Sequel::Model::Associations
     return if opts[:read_only]
 
     association_module_private_def(opts._setter_method){|o| send(:"#{key}=", (o.send(opts.primary_key) if o))}
-
-    association_module_def(opts.setter_method) do |o|  
-      raise(Sequel::Error, "model object #{model} does not have a primary key") if o && !o.pk
-      old_val = send(opts.association_method)
-      return o if old_val == o
-      return if old_val and run_association_callbacks(opts, :before_remove, old_val) == false
-      return if o and run_association_callbacks(opts, :before_add, o) == false
-      send(opts._setter_method, o)
-      associations[name] = o
-      remove_reciprocal_object(opts, old_val) if old_val
-      add_reciprocal_object(opts, o) if o
-      run_association_callbacks(opts, :after_add, o) if o
-      run_association_callbacks(opts, :after_remove, old_val) if old_val
-      o
-    end
+    association_module_def(opts.setter_method){|o| set_associated_object(opts, o)}
   end
   
   # Adds one_to_many association instance methods

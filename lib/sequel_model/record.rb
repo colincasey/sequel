@@ -345,6 +345,9 @@ module Sequel
     def _dataset(opts)
       raise(Sequel::Error, "model object #{model} does not have a primary key") if opts.dataset_need_primary_key? && !pk
       ds = send(opts._dataset_method)
+      ds.extend(Associations::DatasetMethods)
+      ds.model_object = self
+      ds.association_reflection = opts
       opts[:extend].each{|m| ds.extend(m)}
       ds = ds.select(*opts.select) if opts.select
       ds = ds.filter(opts[:conditions]) if opts[:conditions]
@@ -469,6 +472,24 @@ module Sequel
           raise BeforeHookFailed, "one of the before_#{type} hooks returned false"
         end
       end
+    end
+
+    # Set the given object as the associated object for the given association
+    def set_associated_object(opts, o)
+      raise(Sequel::Error, "model object #{model} does not have a primary key") if o && !o.pk
+      old_val = send(opts.association_method)
+      return o if old_val == o
+      return if old_val and run_association_callbacks(opts, :before_remove, old_val) == false
+      return if o and run_association_callbacks(opts, :before_add, o) == false
+      send(opts._setter_method, o)
+      associations[opts[:name]] = o
+      remove_reciprocal_object(opts, old_val) if old_val
+      if o
+        add_reciprocal_object(opts, o) 
+        run_association_callbacks(opts, :after_add, o)
+      end
+      run_association_callbacks(opts, :after_remove, old_val) if old_val
+      o
     end
 
     # Set the columns, filtered by the only and except arrays.

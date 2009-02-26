@@ -45,6 +45,11 @@ module Sequel
       sql << "ELSE #{literal(ce.default)} END)"
     end
 
+    # SQL fragment for the SQL CAST expression.
+    def cast_sql(expr, type)
+      "CAST(#{literal(expr)} AS #{db.send(:type_literal_base, :type=>type)})"
+    end
+
     # SQL fragment for specifying all columns in a given table.
     def column_all_sql(ca)
       "#{quote_schema_table(ca.table)}.*"
@@ -184,8 +189,7 @@ module Sequel
     alias_method :where, :filter
 
     # The first source (primary table) for this dataset.  If the dataset doesn't
-    # have a table, raises an error.  If the table is aliased, returns the actual
-    # table name, not the alias.
+    # have a table, raises an error.  If the table is aliased, returns the aliased name.
     def first_source
       source = @opts[:from]
       if source.nil? || source.empty?
@@ -537,15 +541,17 @@ module Sequel
     #   ds.order(:name.asc).sql #=> 'SELECT * FROM items ORDER BY name ASC'
     #   ds.order(:arr|1).sql #=> 'SELECT * FROM items ORDER BY arr[1]'
     #   ds.order(nil).sql #=> 'SELECT * FROM items'
-    def order(*order)
-      clone(:order => (order.compact.empty?) ? nil : order)
+    def order(*columns)
+      columns += Array((yield SQL::VirtualRow.new)) if block_given?
+      clone(:order => (columns.compact.empty?) ? nil : columns)
     end
     alias_method :order_by, :order
     
     # Returns a copy of the dataset with the order columns added
     # to the existing order.
-    def order_more(*order)
-      order(*((@opts[:order] || []) + order))
+    def order_more(*columns)
+      columns += Array((yield SQL::VirtualRow.new)) if block_given?
+      order(*((@opts[:order] || []) + columns))
     end
     
     # SQL fragment for the ordered expression, used in the ORDER BY
