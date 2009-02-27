@@ -46,7 +46,7 @@ end
 
 namespace :gem do
   desc "install gem on windows"
-  task :install_windows do
+  task :install_windows => :build do
     sh "gem install -l pkg/sequel-#{VERS}.gem"
   end
 end
