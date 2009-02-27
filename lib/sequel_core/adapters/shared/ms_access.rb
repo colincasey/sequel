@@ -24,8 +24,11 @@ module Sequel
         false
       end
 
-      private
+      def identifier_output_method
+        nil
+      end
 
+      private
       # SQL to BEGIN a transaction.
       def begin_transaction_sql
         SQL_BEGIN
@@ -90,7 +93,6 @@ module Sequel
       end
 
       private
-
       def select_clause_order
         SELECT_CLAUSE_ORDER
       end
@@ -104,6 +106,10 @@ module Sequel
       # MSSQL uses the WITH statement to lock tables
       def select_with_sql(sql, opts)
         sql << " WITH #{opts[:with]}" if opts[:with]
+      end
+
+      def select_union_sql(sql, opts)
+        sql << " UNION #{opts[:union]}" if opts[:union]
       end
     end
   end
