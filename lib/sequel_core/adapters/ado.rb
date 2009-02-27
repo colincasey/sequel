@@ -1,3 +1,4 @@
+require 'sequel_core/adapters/utils/date_format'
 require 'win32ole'
 
 module Sequel
@@ -61,6 +62,8 @@ module Sequel
     end
     
     class Dataset < Sequel::Dataset
+      include Dataset::SQLStandardDateFormat
+
       def fetch_rows(sql)
         execute(sql) do |s|
           @columns = s.Fields.extend(Enumerable).map do |column|

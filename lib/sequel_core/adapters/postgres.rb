@@ -326,23 +326,9 @@ module Sequel
         end
       end
 
-      # Literalize strings and blobs using code from the native adapter.
-      def literal(v)
-        case v
-        when LiteralString
-          v
-        when SQL::Blob
-          db.synchronize{|c| "'#{c.escape_bytea(v)}'"}
-        when String
-          db.synchronize{|c| "'#{c.escape_string(v)}'"}
-        else
-          super
-        end
-      end
-      
       if SEQUEL_POSTGRES_USES_PG
         
-        PREPARED_ARG_PLACEHOLDER = '$'.lit.freeze
+        PREPARED_ARG_PLACEHOLDER = LiteralString.new('$').freeze
         
         # PostgreSQL specific argument mapper used for mapping the named
         # argument hash to a array with numbered arguments.  Only used with
@@ -373,7 +359,7 @@ module Sequel
               @prepared_args << y
               i = @prepared_args.length
             end
-            "#{prepared_arg_placeholder}#{i}#{"::#{type}" if type}".lit
+            LiteralString.new("#{prepared_arg_placeholder}#{i}#{"::#{type}" if type}")
           end
         end
 
@@ -451,6 +437,17 @@ module Sequel
           PREPARED_ARG_PLACEHOLDER
         end
       end
+      
+      private
+
+      def literal_blob(v)
+        db.synchronize{|c| "'#{c.escape_bytea(v)}'"}
+      end
+
+      def literal_string(v)
+        db.synchronize{|c| "'#{c.escape_string(v)}'"}
+      end
+
     end
   end
 end

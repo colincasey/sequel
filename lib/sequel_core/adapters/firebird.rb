@@ -1,4 +1,5 @@
 require 'fb'
+require 'sequel_core/adapters/utils/unsupported'
 
 module Sequel
   # The Sequel Firebird adapter requires the ruby fb driver located at
@@ -214,6 +215,7 @@ module Sequel
 
       BOOL_TRUE = '1'.freeze
       BOOL_FALSE = '0'.freeze
+      NULL = LiteralString.new('NULL').freeze
       COMMA_SEPARATOR = ', '.freeze
       FIREBIRD_TIMESTAMP_FORMAT = "TIMESTAMP '%Y-%m-%d %H:%M:%S".freeze
       SELECT_CLAUSE_ORDER = %w'distinct limit columns from join where group having compounds order'.freeze
@@ -249,7 +251,7 @@ module Sequel
       # Use the RETURNING clause to return the primary key of the inserted record, if it exists
       def insert_returning_pk_sql(*values)
         pk = db.primary_key(opts[:from].first)
-        insert_returning_sql(pk ? Sequel::SQL::Identifier.new(pk) : 'NULL'.lit, *values)
+        insert_returning_sql(pk ? Sequel::SQL::Identifier.new(pk) : NULL, *values)
       end
 
       # Use the RETURNING clause to return the columns listed in returning.
@@ -260,19 +262,6 @@ module Sequel
       # Insert a record returning the record inserted
       def insert_select(*values)
         single_record(default_server_opts(:naked=>true, :sql=>insert_returning_sql(nil, *values)))
-      end
-
-      def literal(v)
-        case v
-        when Time, DateTime
-          "#{v.strftime(FIREBIRD_TIMESTAMP_FORMAT)}.#{sprintf("%04d",v.usec / 100)}'"
-        when TrueClass
-          BOOL_TRUE
-        when FalseClass
-          BOOL_FALSE
-        else
-          super
-        end
       end
 
       # The order of clauses in the SELECT SQL statement
@@ -292,6 +281,22 @@ module Sequel
           m[c] = row.shift
           m
         end
+      end
+
+      def literal_datetime(v)
+        "#{v.strftime(FIREBIRD_TIMESTAMP_FORMAT)}.#{sprintf("%04d",(v.sec_fraction * 864000000))}'"
+      end
+
+      def literal_false
+        BOOL_FALSE
+      end
+
+      def literal_time(v)
+        "#{v.strftime(FIREBIRD_TIMESTAMP_FORMAT)}.#{sprintf("%04d",v.usec / 100)}'"
+      end
+
+      def literal_true
+        BOOL_TRUE
       end
     end
   end

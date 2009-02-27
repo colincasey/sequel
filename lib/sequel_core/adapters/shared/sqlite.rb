@@ -1,3 +1,5 @@
+require 'sequel_core/adapters/utils/unsupported'
+
 module Sequel
   module SQLite
     module DatabaseMethods
@@ -142,7 +144,7 @@ module Sequel
       # The array of column schema hashes, except for the ones given in opts[:except]
       def defined_columns_for(table, opts={})
         cols = parse_pragma(table, {})
-        cols.each{|c| c[:default] = c[:default].lit if c[:default]}
+        cols.each{|c| c[:default] = LiteralString.new(c[:default]) if c[:default]}
         if opts[:except]
           nono= Array(opts[:except]).compact.map{|n| n.to_s}
           cols.reject!{|c| nono.include? c[:name] }
@@ -234,27 +236,18 @@ module Sequel
         end
       end
       
-      def literal(v)
-        case v
-        when ::Sequel::SQL::Blob
-          blob = ''
-          v.each_byte{|x| blob << sprintf('%02x', x)}
-          "X'#{blob}'"
-        when Time
-          literal(v.iso8601)
-        when Date, DateTime
-          literal(v.to_s)
-        else
-          super
-        end
-      end
-      
       # SQLite uses the nonstandard ` (backtick) for quoting identifiers.
       def quoted_identifier(c)
         "`#{c}`"
       end
       
       private
+
+      def literal_blob(v)
+        blob = ''
+        v.each_byte{|x| blob << sprintf('%02x', x)}
+        "X'#{blob}'"
+      end
       
       # SQLite uses string literals instead of identifiers in AS clauses.
       def as_sql(expression, aliaz)
