@@ -1,3 +1,5 @@
+require 'sequel_core/adapters/utils/unsupported'
+
 module Sequel
   module MSAccess
     module DatabaseMethods
