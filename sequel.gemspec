@@ -2,11 +2,11 @@
 
 Gem::Specification.new do |s|
   s.name = %q{sequel}
-  s.version = "2.10.2"
+  s.version = "2.10.4"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Jeremy Evans"]
-  s.date = %q{2009-02-26}
+  s.date = %q{2009-03-12}
   s.default_executable = %q{sequel}
   s.description = %q{The Database Toolkit for Ruby}
   s.email = %q{code@jeremyevans.net}
