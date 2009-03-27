@@ -8,6 +8,10 @@ module Sequel
       SQL_COMMIT = "COMMIT TRANSACTION".freeze
       SQL_ROLLBACK = "ROLLBACK TRANSACTION".freeze
 
+      AD_SCHEMA_TABLES  = 20
+      AD_SCHEMA_COLUMNS = 4
+      AD_SCHEMA_INDEXES = 12
+
       def auto_increment_sql
         AUTO_INCREMENT
       end
@@ -19,7 +23,69 @@ module Sequel
       end
 
       def tables
-        self[:MSysObjects].select(:Name).filter({:Type => 1, :Flags => 0} | {:Type => 6}).collect { |result| result[:Name] }
+        synchronize(opts[:server]) do |conn|
+          schema = conn.OpenSchema(AD_SCHEMA_TABLES)
+          unless schema.eof
+            schema.moveFirst
+            m_sys_objects = schema.getRows.transpose.extend(Enumerable).collect { |mso| MSysObject.new(*mso) }
+          end
+          tables = m_sys_objects.select { |mso| mso.table? || mso.linked? }
+          tables.collect { |table| table.name }
+        end
+      end
+
+      def columns(table)
+        synchronize(opts[:server]) do |conn|
+          schema = conn.OpenSchema(AD_SCHEMA_COLUMNS, [nil, nil, table.to_s])
+          result_columns = schema.Fields.extend(Enumerable).map do |column|
+            column.Name.empty? ? '(no column name)' : column.Name
+          end
+
+          columns = []
+          unless schema.eof
+            schema.moveFirst
+            schema.getRows.transpose.each do |row|
+              columns << result_columns.inject({}) do |hash, col|
+                hash[col] = row.shift
+                hash
+              end
+            end
+          end
+          columns
+        end
+      end
+      
+      def indexes(table)
+        synchronize(opts[:server]) do |conn|
+          schema = conn.OpenSchema(AD_SCHEMA_INDEXES, [nil, nil, nil, nil, table.to_s])
+          result_columns = schema.Fields.extend(Enumerable).map do |column|
+            column.Name.empty? ? '(no column name)' : column.Name
+          end
+
+          indexes = []
+          unless schema.eof
+            schema.moveFirst
+            schema.getRows.transpose.each do |row|
+              indexes << result_columns.inject({}) do |hash, col|
+                hash[col] = row.shift
+                hash
+              end
+            end
+          end
+          indexes
+        end
+      end
+
+      def primary_key(table)
+        keys = indexes(table).collect do |index|
+          index["COLUMN_NAME"] if index["PRIMARY_KEY"] == true
+        end
+        
+        case keys.length
+        when 0 then nil
+        when 1 then keys.first
+        else keys
+        end
       end
 
       def upcase_identifiers?
@@ -44,6 +110,31 @@ module Sequel
       # SQL to ROLLBACK a transaction.
       def rollback_transaction_sql
         SQL_ROLLBACK
+      end
+
+      class MSysObject < Struct.new(:catalog, :schema, :name, :type, :guid, :description, :prop_id, :date_created, :date_modified)
+        def table?
+          type == "TABLE"
+        end
+
+        def linked?
+          type == "LINK"
+        end
+
+        def system?
+          type == "SYSTEM TABLE"
+        end
+      end
+
+      class AdoIndex < Struct.new(:prop_id, :guid, :ordinal_position, :nulls, :index_catalog, :table_catalog, :filter_condition,
+          :name, :auto_update, :pages, :fill_factor, :type, :null_collation, :unique, :primary_key, :cardinality, :clustered,
+          :index_schema, :table_schema, :integrated, :collation, :column_name, :sort_bookmarks, :initial_size, :table_name)
+        alias_method :auto_update?,    :auto_update
+        alias_method :unique?,         :unique
+        alias_method :primary_key?,    :primary_key
+        alias_method :clustered?,      :clustered
+        alias_method :integrated?,     :integrated
+        alias_method :sort_bookmarks?, :sort_bookmarks
       end
     end
 
@@ -112,7 +203,7 @@ module Sequel
 
       def select_union_sql(sql, opts)
         sql << " UNION #{opts[:union]}" if opts[:union]
-      end
+      end      
     end
   end
 end

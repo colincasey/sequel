@@ -44,13 +44,6 @@ rescue LoadError
   puts "Jeweler not available. Install it with: sudo gem install technicalpickles-jeweler -s http://gems.github.com"
 end
 
-namespace :gem do
-  desc "install gem on windows"
-  task :install_windows => :build do
-    sh "gem install -l pkg/sequel-#{VERS}.gem"
-  end
-end
-
 ### RDoc
 Rake::RDocTask.new do |rdoc|
   rdoc.rdoc_dir = "rdoc"
@@ -129,3 +122,11 @@ task :stats do
   verbose = true
   CodeStatistics.new(*STATS_DIRECTORIES).to_s
 end
+
+desc "uninstall"
+task :uninstall do
+  sh "gem uninstall sequel"
+end
+
+desc "reinstall"
+task :reinstall => [:uninstall, :gemspec, :build, :install]
