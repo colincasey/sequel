@@ -29,7 +29,8 @@ module Sequel
             schema.moveFirst
             m_sys_objects = schema.getRows.transpose.extend(Enumerable).collect { |mso| MSysObject.new(*mso) }
           end
-          tables = m_sys_objects.select { |mso| mso.table? || mso.linked? }
+          schema.Close
+          tables = m_sys_objects.select { |mso| mso.table?  }
           tables.collect { |table| table.name }
         end
       end
@@ -51,6 +52,8 @@ module Sequel
               end
             end
           end
+
+          schema.Close
           columns
         end
       end
@@ -72,6 +75,8 @@ module Sequel
               end
             end
           end
+
+          schema.Close
           indexes
         end
       end
